@@ -408,6 +408,7 @@ public class HomeController {
                     async function ask() {
                       const question = $('question').value.trim();
                       if (!question) return;
+                      $('question').value = '';
                       addMessage('user', question);
                       const pending = addMessage('assistant', '正在检索知识库并生成回答...');
                       const data = await api('/api/chat', {
@@ -433,6 +434,7 @@ public class HomeController {
                     async function askStream() {
                       const question = $('question').value.trim();
                       if (!question) return;
+                      $('question').value = '';
                       addMessage('user', question);
                       const target = addMessage('assistant', '');
                       const res = await fetch('/api/chat/stream', {
@@ -491,6 +493,12 @@ public class HomeController {
 
                     loadDocs();
                     loadTraces();
+                    $('question').addEventListener('keydown', event => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        ask();
+                      }
+                    });
                   </script>
                 </body>
                 </html>
