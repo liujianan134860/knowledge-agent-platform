@@ -1,5 +1,5 @@
 services:
-  task-demo:
+  knowledge-agent-platform:
     build: .
     ports:
-      - "8080:8080"
+      - "8081:8081"

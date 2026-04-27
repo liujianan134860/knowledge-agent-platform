@@ -1,4 +1,4 @@
-package com.liujianan.taskdemo.common;
+package com.liujianan.agentdemo.common;
 
 public record ApiResponse<T>(boolean success, String message, T data) {
     public static <T> ApiResponse<T> ok(T data) {

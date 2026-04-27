@@ -1,6 +1,5 @@
-package com.liujianan.taskdemo.common;
+package com.liujianan.agentdemo.common;
 
-import com.liujianan.taskdemo.task.TaskNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,12 +18,6 @@ public class GlobalExceptionHandler {
                 .map(error -> error.getField() + " " + error.getDefaultMessage())
                 .orElse("invalid request");
         return ApiResponse.fail(message);
-    }
-
-    @ExceptionHandler(TaskNotFoundException.class)
-    @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ApiResponse<Void> handleTaskNotFound(TaskNotFoundException exception) {
-        return ApiResponse.fail(exception.getMessage());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

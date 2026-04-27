@@ -1,15 +1,21 @@
-# Java Intern Task Demo
+# Knowledge Agent Platform
 
-一个面向 Java 后端实习求职的轻量级任务管理 Demo。项目重点不是复杂业务，而是展示基础后端工程能力：RESTful API、参数校验、统一响应、全局异常处理、分层结构、接口文档和可运行说明。
+一个基于 Spring Boot 3 的知识库问答与工具调用平台。项目采用 Agent Harness 思路组织代码，将模型适配、上下文构建、知识检索、工具注册、调用轨迹和评测记录拆分为相对独立的模块，便于观察、调试和扩展。
 
-## 功能范围
+当前实现使用内存知识库和关键词检索模拟 RAG 流程，使用本地工具注册表模拟 Tool Calling/MCP 链路。代码结构保留 LLM、Embedding、向量数据库和 MCP 协议适配的扩展点。
 
-- 任务列表查询、创建、更新状态、删除
-- 基于内存数据的 Demo 数据存储，便于快速运行和面试演示
-- 参数校验与统一错误返回
-- 全局异常处理
-- Swagger/OpenAPI 接口文档
-- Dockerfile 与 docker-compose 示例
+## 功能概览
+
+- 知识库管理：文档片段写入、列表查询、按关键词 Top-K 检索
+- 问答链路：接收问题、检索上下文、生成回答、返回来源片段
+- 会话管理：创建会话、记录多轮问答消息
+- 流式响应：提供 SSE 形式的分段响应接口
+- 工具注册：维护工具定义、参数示例、权限范围和超时配置
+- 工具调用：内置 `echo`、`calculator`、`http_mock` 三个示例工具
+- 调用轨迹：记录检索、上下文构建、工具调用、回答生成等 Trace 事件
+- 轻量评测：维护问答样例，记录期望关键词、检索命中和人工反馈
+- 接口文档：集成 Swagger/OpenAPI
+- 容器化：提供 Dockerfile 和 Docker Compose
 
 ## 技术栈
 
@@ -17,8 +23,34 @@
 - Spring Boot 3
 - Spring MVC
 - Jakarta Validation
+- Server-Sent Events
 - springdoc-openapi
 - Docker / Docker Compose
+
+## 架构说明
+
+```text
+src/main/java/com/liujianan/agentdemo
+├── chat        # 问答入口、上下文组装和回答生成
+├── common      # 统一响应、异常处理
+├── evaluation  # 评测样例与反馈记录
+├── harness     # Harness 编排、Trace、会话状态
+├── knowledge   # 文档片段、检索、来源片段
+└── tool        # 工具定义、注册、调用与结果
+```
+
+### Harness 流程
+
+```text
+User Question
+  -> Session Memory
+  -> Knowledge Retrieval
+  -> Context Builder
+  -> Tool Registry / Tool Executor
+  -> Answer Composer
+  -> Trace Recorder
+  -> Evaluation Record
+```
 
 ## 快速启动
 
@@ -28,45 +60,77 @@ mvn spring-boot:run
 
 启动后访问：
 
-- API 根路径：http://localhost:8080
-- Swagger UI：http://localhost:8080/swagger-ui/index.html
+- Swagger UI: http://localhost:8081/swagger-ui/index.html
+- OpenAPI JSON: http://localhost:8081/v3/api-docs
 
-## 接口示例
+## API 示例
 
-### 查询任务
-
-```bash
-curl http://localhost:8080/api/tasks
-```
-
-### 创建任务
+### 添加文档片段
 
 ```bash
-curl -X POST http://localhost:8080/api/tasks \
+curl -X POST http://localhost:8081/api/documents \
   -H "Content-Type: application/json" \
-  -d "{\"title\":\"Prepare GitHub README\",\"description\":\"Add run steps and screenshots\"}"
+  -d "{\"title\":\"Agent Harness\",\"content\":\"Harness separates model, memory, tools and trace for better debugging.\",\"tags\":[\"agent\",\"harness\"]}"
 ```
 
-### 更新状态
+### 知识库问答
 
 ```bash
-curl -X PATCH "http://localhost:8080/api/tasks/1/status?status=DONE"
+curl -X POST http://localhost:8081/api/chat \
+  -H "Content-Type: application/json" \
+  -d "{\"question\":\"How does Agent Harness improve debugging?\"}"
 ```
 
-### 删除任务
+### SSE 流式问答
 
 ```bash
-curl -X DELETE http://localhost:8080/api/tasks/1
+curl -N -X POST http://localhost:8081/api/chat/stream \
+  -H "Content-Type: application/json" \
+  -d "{\"question\":\"Explain the tool calling flow\"}"
 ```
 
-## 项目说明
+### 查看工具列表
 
-这个仓库用于展示第一份 Java 后端实习所需的基础能力。当前版本使用内存存储，后续可以扩展为 MySQL、MyBatis-Plus、JWT 登录、Redis 缓存和前端页面。
+```bash
+curl http://localhost:8081/api/tools
+```
 
-## 后续计划
+### 调用计算工具
 
-- 接入 MySQL 和 MyBatis-Plus
-- 增加 JWT 登录认证
-- 增加 Redis 缓存或防重复提交示例
-- 补充单元测试与接口测试
-- 部署到云服务器或 Render/Railway 等平台
+```bash
+curl -X POST http://localhost:8081/api/tools/calculator/invoke \
+  -H "Content-Type: application/json" \
+  -d "{\"input\":\"12 + 30\"}"
+```
+
+### 查看 Trace
+
+```bash
+curl http://localhost:8081/api/traces
+```
+
+### 添加评测样例
+
+```bash
+curl -X POST http://localhost:8081/api/evaluations \
+  -H "Content-Type: application/json" \
+  -d "{\"question\":\"What is RAG?\",\"expectedKeywords\":[\"retrieval\",\"context\",\"answer\"]}"
+```
+
+## Docker Compose
+
+```bash
+docker compose up --build
+```
+
+服务默认暴露在：
+
+- http://localhost:8081
+
+## 扩展方向
+
+- 接入真实 OpenAI-Compatible LLM API
+- 使用 Embedding + pgvector/Milvus 替换关键词检索
+- 增加 MCP Server/Client 协议适配
+- 增加工具权限、审批节点和更完整的失败重试策略
+- 接入 Micrometer 记录 Token、延迟、工具调用成功率等指标

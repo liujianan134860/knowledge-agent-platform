@@ -1,11 +1,11 @@
-package com.liujianan.taskdemo;
+package com.liujianan.agentdemo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class TaskDemoApplication {
+public class KnowledgeAgentDemoApplication {
     public static void main(String[] args) {
-        SpringApplication.run(TaskDemoApplication.class, args);
+        SpringApplication.run(KnowledgeAgentDemoApplication.class, args);
     }
 }
