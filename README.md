@@ -70,6 +70,12 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 未配置 `DEEPSEEK_API_KEY` 时，系统会自动回退为“检索摘要回答”，不影响知识库、工具调用和 Trace 演示。
 
+Windows 本地调试也可以复制 `.env.example` 为 `.env`，在 `.env` 中填写 DeepSeek API Key，然后执行：
+
+```powershell
+.\scripts\run-local.ps1
+```
+
 启动后访问：
 
 - Home: http://localhost:8081/
