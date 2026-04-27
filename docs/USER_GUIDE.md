@@ -36,6 +36,30 @@ https://knowledge-agent-platform.onrender.com/swagger-ui/index.html
 POST /api/documents
 ```
 
+也可以在首页左侧“上传文档”区域直接选择文件上传。当前支持：
+
+- Word: `.docx`
+- PDF: `.pdf`
+- Text: `.txt`
+- Markdown: `.md`
+
+上传后系统会抽取文本并自动切分为多个知识片段。
+
+文件上传接口：
+
+```text
+POST /api/documents/upload
+```
+
+示例：
+
+```bash
+curl -X POST https://knowledge-agent-platform.onrender.com/api/documents/upload \
+  -F "file=@/path/to/document.pdf" \
+  -F "title=项目文档" \
+  -F "tags=upload,rag"
+```
+
 示例：
 
 ```bash

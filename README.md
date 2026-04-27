@@ -7,6 +7,7 @@
 ## 功能概览
 
 - 知识库管理：文档片段写入、列表查询、按关键词 Top-K 检索
+- 文档上传：支持 `.docx`、`.pdf`、`.txt`、`.md` 上传解析并自动切分
 - 问答链路：接收问题、检索上下文、生成回答、返回来源片段
 - 会话管理：创建会话、记录多轮问答消息
 - 流式响应：提供 SSE 形式的分段响应接口
@@ -88,6 +89,15 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 curl -X POST http://localhost:8081/api/documents \
   -H "Content-Type: application/json" \
   -d "{\"title\":\"Agent Harness\",\"content\":\"Harness separates model, memory, tools and trace for better debugging.\",\"tags\":[\"agent\",\"harness\"]}"
+```
+
+### 上传 Word/PDF 文档
+
+```bash
+curl -X POST http://localhost:8081/api/documents/upload \
+  -F "file=@/path/to/document.pdf" \
+  -F "title=项目文档" \
+  -F "tags=upload,rag"
 ```
 
 ### 知识库问答

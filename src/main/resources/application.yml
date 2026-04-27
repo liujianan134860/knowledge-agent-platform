@@ -1,9 +1,17 @@
 spring:
   application:
     name: knowledge-agent-platform
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
 
 server:
   port: ${PORT:8081}
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
 
 springdoc:
   swagger-ui:

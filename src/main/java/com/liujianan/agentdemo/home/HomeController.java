@@ -75,6 +75,17 @@ public class HomeController {
                       <input id="tags" value="agent,harness">
                       <button style="margin-top:10px;" onclick="addDoc()">添加到知识库</button>
                       <p id="docStatus" class="muted"></p>
+
+                      <h3>上传文档</h3>
+                      <label for="uploadTitle">文档标题</label>
+                      <input id="uploadTitle" placeholder="默认使用文件名">
+                      <label for="uploadTags">标签，逗号分隔</label>
+                      <input id="uploadTags" value="upload,knowledge">
+                      <label for="file">选择文件</label>
+                      <input id="file" type="file" accept=".docx,.pdf,.txt,.md">
+                      <button style="margin-top:10px;" onclick="uploadFile()">上传并解析</button>
+                      <p class="muted">支持 Word .docx、PDF、TXT、Markdown。上传后会自动切分为知识片段。</p>
+                      <div id="uploadResult" class="doc muted">等待上传...</div>
                     </section>
 
                     <section>
@@ -176,6 +187,27 @@ public class HomeController {
                       });
                       $('docStatus').textContent = data.success ? '已添加知识片段。' : '添加失败：' + data.message;
                       loadDocs();
+                    }
+                    async function uploadFile() {
+                      const file = $('file').files[0];
+                      if (!file) {
+                        $('uploadResult').textContent = '请先选择文件。';
+                        return;
+                      }
+                      const form = new FormData();
+                      form.append('file', file);
+                      if ($('uploadTitle').value.trim()) form.append('title', $('uploadTitle').value.trim());
+                      if ($('uploadTags').value.trim()) form.append('tags', $('uploadTags').value.trim());
+                      const res = await fetch('/api/documents/upload', { method: 'POST', body: form });
+                      const text = await res.text();
+                      let data;
+                      try { data = JSON.parse(text); } catch { data = {success:false, message:text}; }
+                      if (data.success) {
+                        $('uploadResult').innerHTML = `<strong>上传成功</strong><br>文件：${escapeHtml(data.data.filename)}<br>字符数：${data.data.characterCount}<br>知识片段：${data.data.chunkCount}`;
+                        loadDocs();
+                      } else {
+                        $('uploadResult').textContent = '上传失败：' + (data.message || text);
+                      }
                     }
                     async function ask() {
                       const question = $('question').value.trim();

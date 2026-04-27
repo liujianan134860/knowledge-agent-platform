@@ -1,6 +1,7 @@
 package com.liujianan.agentdemo.knowledge;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,10 +13,12 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class KnowledgeService {
-    private final AtomicLong idGenerator = new AtomicLong(2);
+    private final AtomicLong idGenerator = new AtomicLong(3);
     private final List<DocumentChunk> chunks = new CopyOnWriteArrayList<>();
+    private final DocumentTextExtractor documentTextExtractor;
 
-    public KnowledgeService() {
+    public KnowledgeService(DocumentTextExtractor documentTextExtractor) {
+        this.documentTextExtractor = documentTextExtractor;
         LocalDateTime now = LocalDateTime.now();
         chunks.add(new DocumentChunk(1L, "Agent Harness", "Agent Harness separates model adapter, context builder, memory, tools, trace and evaluation so each step can be debugged independently.", List.of("agent", "harness"), now));
         chunks.add(new DocumentChunk(2L, "RAG Flow", "RAG retrieves source chunks, compresses context, builds a prompt, returns answer with citations, and records retrieval hit rate.", List.of("rag", "retrieval"), now));
@@ -36,6 +39,32 @@ public class KnowledgeService {
         );
         chunks.add(chunk);
         return chunk;
+    }
+
+    public DocumentUploadResponse upload(MultipartFile file, String title, List<String> tags) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("file must not be empty");
+        }
+        String text = normalizeWhitespace(documentTextExtractor.extract(file));
+        if (text.isBlank()) {
+            throw new IllegalArgumentException("no text extracted from uploaded file");
+        }
+        String baseTitle = title == null || title.isBlank() ? cleanFilename(file.getOriginalFilename()) : title.trim();
+        List<String> normalizedTags = tags == null ? List.of("upload") : tags.stream().filter(tag -> tag != null && !tag.isBlank()).map(String::trim).toList();
+        List<String> parts = splitText(text, 900);
+        List<DocumentChunk> created = new ArrayList<>();
+        for (int i = 0; i < parts.size(); i++) {
+            DocumentChunk chunk = new DocumentChunk(
+                    idGenerator.incrementAndGet(),
+                    parts.size() == 1 ? baseTitle : baseTitle + " #" + (i + 1),
+                    parts.get(i),
+                    normalizedTags,
+                    LocalDateTime.now()
+            );
+            chunks.add(chunk);
+            created.add(chunk);
+        }
+        return new DocumentUploadResponse(file.getOriginalFilename(), file.getContentType(), text.length(), created.size(), created);
     }
 
     public List<DocumentChunk> search(String query, int topK) {
@@ -65,6 +94,45 @@ public class KnowledgeService {
 
     private String normalize(String text) {
         return text == null ? "" : text.toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeWhitespace(String text) {
+        return text == null ? "" : text.replace("\r", "\n").replaceAll("[ \\t]+", " ").replaceAll("\\n{3,}", "\n\n").trim();
+    }
+
+    private List<String> splitText(String text, int maxChars) {
+        List<String> result = new ArrayList<>();
+        String[] paragraphs = text.split("\\n+");
+        StringBuilder current = new StringBuilder();
+        for (String paragraph : paragraphs) {
+            String trimmed = paragraph.trim();
+            if (trimmed.isBlank()) {
+                continue;
+            }
+            if (current.length() + trimmed.length() + 1 > maxChars && current.length() > 0) {
+                result.add(current.toString().trim());
+                current.setLength(0);
+            }
+            if (trimmed.length() > maxChars) {
+                for (int start = 0; start < trimmed.length(); start += maxChars) {
+                    result.add(trimmed.substring(start, Math.min(start + maxChars, trimmed.length())));
+                }
+            } else {
+                current.append(trimmed).append("\n");
+            }
+        }
+        if (current.length() > 0) {
+            result.add(current.toString().trim());
+        }
+        return result.isEmpty() ? List.of(text) : result;
+    }
+
+    private String cleanFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return "Uploaded Document";
+        }
+        int dot = filename.lastIndexOf('.');
+        return dot > 0 ? filename.substring(0, dot) : filename;
     }
 
     private record ScoredChunk(DocumentChunk chunk, int score) {

@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -28,6 +30,16 @@ public class KnowledgeController {
     @PostMapping
     public ApiResponse<DocumentChunk> add(@Valid @RequestBody AddDocumentRequest request) {
         return ApiResponse.ok(knowledgeService.add(request));
+    }
+
+    @PostMapping("/upload")
+    public ApiResponse<DocumentUploadResponse> upload(@RequestParam("file") MultipartFile file,
+                                                      @RequestParam(required = false) String title,
+                                                      @RequestParam(required = false) String tags) {
+        List<String> tagList = tags == null || tags.isBlank()
+                ? List.of("upload")
+                : Arrays.stream(tags.split(",")).map(String::trim).filter(tag -> !tag.isBlank()).toList();
+        return ApiResponse.ok(knowledgeService.upload(file, title, tagList));
     }
 
     @GetMapping("/search")
