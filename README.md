@@ -60,6 +60,7 @@ mvn spring-boot:run
 
 启动后访问：
 
+- Home: http://localhost:8081/
 - Swagger UI: http://localhost:8081/swagger-ui/index.html
 - OpenAPI JSON: http://localhost:8081/v3/api-docs
 
