@@ -68,6 +68,8 @@ curl -X POST https://knowledge-agent-platform.onrender.com/api/chat \
 - `promptTokens`
 - `latencyMs`
 
+如果部署环境配置了 `DEEPSEEK_API_KEY`，`answer` 会由 DeepSeek 根据检索到的来源片段生成。未配置时，系统会返回检索摘要。
+
 ## 5. SSE 流式问答
 
 接口：

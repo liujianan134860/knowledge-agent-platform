@@ -24,6 +24,7 @@
 - Spring MVC
 - Jakarta Validation
 - Server-Sent Events
+- DeepSeek / OpenAI-Compatible Chat Completions
 - springdoc-openapi
 - Docker / Docker Compose
 
@@ -57,6 +58,16 @@ User Question
 ```bash
 mvn spring-boot:run
 ```
+
+如需启用真实模型回答，配置环境变量：
+
+```bash
+DEEPSEEK_API_KEY=你的_API_Key
+DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+```
+
+未配置 `DEEPSEEK_API_KEY` 时，系统会自动回退为“检索摘要回答”，不影响知识库、工具调用和 Trace 演示。
 
 启动后访问：
 
