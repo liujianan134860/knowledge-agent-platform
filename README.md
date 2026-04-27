@@ -127,6 +127,23 @@ docker compose up --build
 
 - http://localhost:8081
 
+## Render 部署
+
+项目已经支持读取 `PORT` 环境变量：
+
+```yaml
+server:
+  port: ${PORT:8081}
+```
+
+在 Render 创建 Web Service 时选择 Docker 部署即可。部署完成后，Render 会提供一个 `https://xxx.onrender.com` 地址，可直接访问：
+
+- `/swagger-ui/index.html`
+- `/api/documents`
+- `/api/chat`
+- `/api/tools`
+- `/api/traces`
+
 ## 扩展方向
 
 - 接入真实 OpenAI-Compatible LLM API
