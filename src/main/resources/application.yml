@@ -5,6 +5,42 @@ spring:
     multipart:
       max-file-size: 20MB
       max-request-size: 20MB
+  datasource:
+    url: ${POSTGRES_URL:jdbc:h2:file:./data/knowledge-agent-platform;DB_CLOSE_DELAY=-1}
+    driver-class-name: ${POSTGRES_DRIVER:org.h2.Driver}
+    username: ${POSTGRES_USER:sa}
+    password: ${POSTGRES_PASSWORD:}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: ${HIBERNATE_DIALECT:org.hibernate.dialect.H2Dialect}
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # Spring AI Configuration
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      chat:
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-chat}
+    vectorstore:
+      pgvector:
+        initialize-schema: ${PGVECTOR_INIT_SCHEMA:false}
+        dimensions: 1536
+        distance-type: cosine_distance
+    mcp:
+      server:
+        enabled: true
+        name: knowledge-agent-platform
+        version: 1.0.0
+        type: SYNC
 
 server:
   port: ${PORT:8081}
@@ -16,6 +52,16 @@ server:
 springdoc:
   swagger-ui:
     path: /swagger-ui/index.html
+
+# Micrometer / Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
 
 deepseek:
   api-key: ${DEEPSEEK_API_KEY:}

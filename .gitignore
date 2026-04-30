@@ -5,3 +5,13 @@ target/
 *.log
 .env
 .tools/
+data/
+.claude/
+class_dump.txt
+class_search.txt
+app_js.js
+page.html
+page_debug.html
+start-claude.ps1
+start-server.ps1
+*.class

@@ -1,35 +1,57 @@
 package com.liujianan.agentdemo.harness;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class SessionService {
-    private final ConcurrentHashMap<String, ChatSession> sessions = new ConcurrentHashMap<>();
+    private final ChatSessionRepository sessionRepository;
 
-    public ChatSession create() {
+    public SessionService(ChatSessionRepository sessionRepository) {
+        this.sessionRepository = sessionRepository;
+    }
+
+    @Transactional
+    public ChatSession create(String userId) {
         String id = UUID.randomUUID().toString();
-        ChatSession session = new ChatSession(id, new ArrayList<>(), LocalDateTime.now(), LocalDateTime.now());
-        sessions.put(id, session);
-        return session;
+        ChatSession session = new ChatSession(id, new ArrayList<>(), LocalDateTime.now(), LocalDateTime.now(), userId);
+        return sessionRepository.save(session);
     }
 
-    public ChatSession append(String sessionId, String role, String content) {
-        ChatSession current = sessions.computeIfAbsent(sessionId == null || sessionId.isBlank() ? UUID.randomUUID().toString() : sessionId,
-                id -> new ChatSession(id, new ArrayList<>(), LocalDateTime.now(), LocalDateTime.now()));
-        List<SessionMessage> messages = new ArrayList<>(current.messages());
+    @Transactional
+    public ChatSession append(String sessionId, String role, String content, String userId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            sessionId = UUID.randomUUID().toString();
+        }
+        ChatSession current = sessionRepository.findById(sessionId).orElse(null);
+        if (current == null) {
+            current = new ChatSession(sessionId, new ArrayList<>(), LocalDateTime.now(), LocalDateTime.now(), userId);
+        }
+        if (!current.getUserId().equals(userId)) {
+            throw new IllegalArgumentException("session not found: " + sessionId);
+        }
+        List<SessionMessage> messages = new ArrayList<>(current.getMessages());
         messages.add(new SessionMessage(role, content, LocalDateTime.now()));
-        ChatSession updated = new ChatSession(current.id(), messages, current.createdAt(), LocalDateTime.now());
-        sessions.put(updated.id(), updated);
-        return updated;
+        current.setMessages(messages);
+        current.setUpdatedAt(LocalDateTime.now());
+        return sessionRepository.save(current);
     }
 
-    public List<ChatSession> list() {
-        return sessions.values().stream().sorted((a, b) -> b.updatedAt().compareTo(a.updatedAt())).toList();
+    public List<ChatSession> list(String userId) {
+        return sessionRepository.findByUserIdOrderByUpdatedAtDesc(userId);
+    }
+
+    @Transactional
+    public boolean delete(String sessionId, String userId) {
+        if (sessionId == null || sessionId.isBlank()) return false;
+        ChatSession session = sessionRepository.findById(sessionId).orElse(null);
+        if (session == null || !session.getUserId().equals(userId)) return false;
+        sessionRepository.delete(session);
+        return true;
     }
 }

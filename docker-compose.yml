@@ -1,5 +1,37 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: knowledge-agent-postgres
+    environment:
+      POSTGRES_DB: knowledge_agent
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: agent123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d knowledge_agent"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   knowledge-agent-platform:
     build: .
     ports:
       - "8081:8081"
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/knowledge_agent
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: agent123
+      POSTGRES_DRIVER: org.postgresql.Driver
+      HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

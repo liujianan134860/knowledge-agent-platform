@@ -32,4 +32,10 @@ public class GlobalExceptionHandler {
     public ApiResponse<Void> handleUploadSize() {
         return ApiResponse.fail("uploaded file is larger than the 20MB limit");
     }
+
+    @ExceptionHandler(io.jsonwebtoken.JwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponse<Void> handleJwt(io.jsonwebtoken.JwtException exception) {
+        return ApiResponse.fail("invalid token");
+    }
 }
