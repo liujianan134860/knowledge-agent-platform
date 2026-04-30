@@ -2,23 +2,33 @@
 
 本文档用于演示 Knowledge Agent Platform 的主要功能。
 
-## 1. 首页
+在线地址：https://knowledge-agent-platform.onrender.com/
 
-访问：
+## 1. 注册与登录
 
-```text
-https://knowledge-agent-platform.onrender.com/
-```
+访问首页后，首先需要注册一个账号：
 
-首页提供以下入口：
+1. 点击 **Register** 切换至注册表单
+2. 输入用户名和密码（至少 6 位）
+3. 注册成功后自动登录
 
-- Swagger UI
-- Documents API
-- Tools API
-- Trace API
-- Evaluation API
+下次访问时使用 **Login** 直接登录。
 
-## 2. 查看接口文档
+## 2. 首页
+
+首页左侧导航栏提供以下功能面板：
+
+- **知识库** — 查看和管理知识片段
+- **上传文档** — 上传 `.docx` / `.pdf` / `.txt` / `.md` 文件
+- **工具** — 调用内置工具（echo、calculator、http_mock）
+- **Run** — 查看问答执行时间线
+- **Agents** — 查看 Agent 团队定义
+- **Skills** — 查看平台技能定义
+- **Trace** — 查看请求追踪记录
+- **评测** — 添加和运行评测用例
+- **接口** — 快速访问各 API 入口
+
+## 3. 查看接口文档
 
 访问：
 
@@ -28,7 +38,7 @@ https://knowledge-agent-platform.onrender.com/swagger-ui/index.html
 
 可以在 Swagger UI 中直接调试接口。
 
-## 3. 添加文档片段
+## 4. 添加文档片段
 
 接口：
 
@@ -146,7 +156,39 @@ curl -X POST https://knowledge-agent-platform.onrender.com/api/tools/calculator/
   -d "{\"input\":\"12 + 30\"}"
 ```
 
-## 8. 查看 Trace
+## 8. 查看 Agent 定义
+
+接口：
+
+```text
+GET /api/agents
+```
+
+示例：
+
+```bash
+curl https://knowledge-agent-platform.onrender.com/api/agents
+```
+
+返回 Agent 团队定义，包括名称、角色、职责、输入输出描述等信息。
+
+## 9. 查看 Skill 定义
+
+接口：
+
+```text
+GET /api/skills
+```
+
+示例：
+
+```bash
+curl https://knowledge-agent-platform.onrender.com/api/skills
+```
+
+返回平台技能定义，涵盖文档解析、评测、RAG 回答、工具调用、Trace 审查等。
+
+## 10. 查看 Trace
 
 接口：
 
@@ -162,7 +204,7 @@ curl https://knowledge-agent-platform.onrender.com/api/traces
 
 Trace 用于观察问答、检索、工具调用、回答生成等步骤。
 
-## 9. 维护评测样例
+## 11. 维护评测样例
 
 接口：
 
@@ -182,4 +224,27 @@ curl -X POST https://knowledge-agent-platform.onrender.com/api/evaluations \
 
 ```bash
 curl https://knowledge-agent-platform.onrender.com/api/evaluations
+```
+
+## 12. 回答质量检查（QA Review）
+
+在问答页面，每条 AI 回答下方都有一个 **检查回答** 按钮。点击后会自动对回答进行质量评估，包括：
+
+- 是否命中知识库
+- 是否标注来源引用
+- 关键词覆盖率
+- 是否存在无依据断言
+- 综合评分（0-100）
+
+检查结果直接显示在回答下方。可以直接调用 API 进行质量检查：
+
+```bash
+curl -X POST https://knowledge-agent-platform.onrender.com/api/qa/review \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What is Java?",
+    "answer": "Java is a programming language [1].",
+    "sources": [{"title": "Source", "content": "Java is a programming language", "chunkId": "1", "tags": "", "score": 0}],
+    "expectedKeywords": ["Java", "programming"]
+  }'
 ```

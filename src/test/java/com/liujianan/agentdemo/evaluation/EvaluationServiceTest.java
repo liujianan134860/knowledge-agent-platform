@@ -22,13 +22,16 @@ class EvaluationServiceTest {
     @Mock
     private EvaluationCaseRepository evaluationRepository;
 
+    @Mock
+    private QaReviewService qaReviewService;
+
     private HarnessMetrics harnessMetrics;
     private EvaluationService evaluationService;
 
     @BeforeEach
     void setUp() {
         harnessMetrics = new HarnessMetrics(new SimpleMeterRegistry());
-        evaluationService = new EvaluationService(evaluationRepository, harnessMetrics);
+        evaluationService = new EvaluationService(evaluationRepository, harnessMetrics, qaReviewService);
     }
 
     @Test
@@ -80,6 +83,13 @@ class EvaluationServiceTest {
         String answer = "Java is an object-oriented programming language. [1] " +
                 "It is widely used for enterprise applications.";
 
+        QaReviewResult reviewResult = new QaReviewResult(
+                "What is Java?", true, true, true,
+                List.of("programming", "language", "object-oriented"), List.of(),
+                false, 0.9, "✅ 命中知识库 | ✅ 标注来源引用 | ✅ 关键词覆盖 (3/3) | ✅ 内容有据可查 | 🏆 综合评分: 90/100"
+        );
+        when(qaReviewService.review(any(QaReviewRequest.class))).thenReturn(reviewResult);
+
         RunEvaluationResponse response = evaluationService.run(1L, answer, "user1");
 
         assertTrue(response.retrievalHit());
@@ -102,6 +112,13 @@ class EvaluationServiceTest {
         when(evaluationRepository.findById(1L)).thenReturn(Optional.of(evalCase));
 
         String answer = "I don't know about this topic.";
+
+        QaReviewResult reviewResult = new QaReviewResult(
+                "What is Python?", true, false, false,
+                List.of(), List.of("dynamic", "interpreted", "scripting"),
+                true, 0.1, "❌ 未命中知识库 | ❌ 缺少来源引用 | ⚠️ 关键词未达标: 命中 0/3，缺失: dynamic, interpreted, scripting | ⚠️ 存在无依据断言 | 🏆 综合评分: 10/100"
+        );
+        when(qaReviewService.review(any(QaReviewRequest.class))).thenReturn(reviewResult);
 
         RunEvaluationResponse response = evaluationService.run(1L, answer, "user1");
 
@@ -133,6 +150,13 @@ class EvaluationServiceTest {
 
         String answer = "Spring is a Java framework. [1]";
 
+        QaReviewResult reviewResult = new QaReviewResult(
+                "What is Spring?", true, true, true,
+                List.of("framework", "Java"), List.of("dependency injection", "enterprise"),
+                false, 0.65, "✅ 命中知识库 | ✅ 标注来源引用 | ✅ 关键词覆盖 (2/4) | ✅ 内容有据可查 | 🏆 综合评分: 65/100"
+        );
+        when(qaReviewService.review(any(QaReviewRequest.class))).thenReturn(reviewResult);
+
         RunEvaluationResponse response = evaluationService.run(1L, answer, "user1");
 
         assertTrue(response.retrievalHit());
@@ -152,6 +176,13 @@ class EvaluationServiceTest {
         when(evaluationRepository.findById(1L)).thenReturn(Optional.of(evalCase));
 
         String answer = "Here is what I know about Java. [1]";
+
+        QaReviewResult reviewResult = new QaReviewResult(
+                "Tell me about Java", true, true, true,
+                List.of(), List.of(),
+                false, 1.0, "✅ 命中知识库 | ✅ 标注来源引用 | ✅ 内容有据可查 | 🏆 综合评分: 100/100"
+        );
+        when(qaReviewService.review(any(QaReviewRequest.class))).thenReturn(reviewResult);
 
         RunEvaluationResponse response = evaluationService.run(1L, answer, "user1");
 

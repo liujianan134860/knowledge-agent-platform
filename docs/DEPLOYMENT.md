@@ -70,10 +70,12 @@ https://knowledge-agent-platform.onrender.com
 
 部署完成后依次访问：
 
-- 首页：`/`
+- 首页：`/`（打开控制台后需先注册/登录）
 - Swagger UI：`/swagger-ui/index.html`
 - 文档列表：`/api/documents`
 - 工具列表：`/api/tools`
+- Agent 定义：`/api/agents`
+- Skill 定义：`/api/skills`
 - Trace 列表：`/api/traces`
 - 评测样例：`/api/evaluations`
 
@@ -81,6 +83,8 @@ https://knowledge-agent-platform.onrender.com
 
 ```text
 https://knowledge-agent-platform.onrender.com/swagger-ui/index.html
+https://knowledge-agent-platform.onrender.com/api/agents
+https://knowledge-agent-platform.onrender.com/api/skills
 ```
 
 ## 4. 常见问题

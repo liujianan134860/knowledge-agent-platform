@@ -1,13 +1,16 @@
 package com.liujianan.agentdemo.agent;
 
 import com.liujianan.agentdemo.common.ApiResponse;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -19,19 +22,22 @@ public class AgentController {
     @GetMapping
     public ApiResponse<List<AgentInfo>> getAgents() {
         List<AgentInfo> agents = new ArrayList<>();
-        Path agentsDir = Path.of(".claude", "agents");
-        if (Files.exists(agentsDir)) {
-            try (var stream = Files.list(agentsDir)) {
-                List<Path> files = stream.filter(p -> p.toString().endsWith(".md")).sorted().toList();
-                for (Path file : files) {
-                    String content = Files.readString(file);
-                    String name = file.getFileName().toString().replace(".md", "");
-                    AgentInfo info = parseAgent(name, content);
-                    agents.add(info);
+        try {
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+            Resource[] resources = resolver.getResources("classpath:agents/*.md");
+            for (Resource resource : resources) {
+                String filename = resource.getFilename();
+                if (filename == null) continue;
+                String name = filename.replace(".md", "");
+                String content;
+                try (InputStream is = resource.getInputStream();
+                     BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                    content = reader.lines().collect(Collectors.joining("\n"));
                 }
-            } catch (IOException e) {
-                // ignore
+                agents.add(parseAgent(name, content));
             }
+        } catch (Exception e) {
+            // Return empty list if directory not found
         }
         return ApiResponse.ok(agents);
     }
@@ -46,7 +52,6 @@ public class AgentController {
     }
 
     private String extractRole(String content, String displayName) {
-        // Try to find the role description: first sentence after the heading
         String[] lines = content.split("\n");
         boolean inHeading = true;
         for (String line : lines) {

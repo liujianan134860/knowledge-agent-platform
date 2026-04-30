@@ -2,15 +2,25 @@ package com.liujianan.agentdemo.evaluation;
 
 import com.liujianan.agentdemo.common.ApiResponse;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class QaReviewControllerTest {
 
-    private final QaReviewController controller = new QaReviewController();
+    @Mock
+    private QaReviewService qaReviewService;
+
+    @InjectMocks
+    private QaReviewController controller;
 
     @Test
     void review_withHitAndCitations_shouldReturnHighScore() {
@@ -24,7 +34,14 @@ class QaReviewControllerTest {
                 List.of("programming", "Java")
         );
 
-        ApiResponse<QaReviewResult> response = controller.review(request, new MockHttpServletRequest());
+        QaReviewResult expected = new QaReviewResult(
+                "What is Java?", true, true, true,
+                List.of("programming", "Java"), List.of(),
+                false, 0.9, "✅ 命中知识库 | ✅ 标注来源引用 | ✅ 关键词覆盖 (2/2) | ✅ 内容有据可查 | 🏆 综合评分: 90/100"
+        );
+        when(qaReviewService.review(request)).thenReturn(expected);
+
+        ApiResponse<QaReviewResult> response = controller.review(request);
 
         assertTrue(response.success());
         QaReviewResult result = response.data();
@@ -42,7 +59,14 @@ class QaReviewControllerTest {
                 List.of("programming", "language")
         );
 
-        ApiResponse<QaReviewResult> response = controller.review(request, new MockHttpServletRequest());
+        QaReviewResult expected = new QaReviewResult(
+                "What is Java?", false, false, false,
+                List.of(), List.of("programming", "language"),
+                true, 0.0, "❌ 未命中知识库 | ❌ 缺少来源引用 | ⚠️ 关键词未达标: 命中 0/2，缺失: programming, language | ⚠️ 存在无依据断言 | 🏆 综合评分: 0/100"
+        );
+        when(qaReviewService.review(request)).thenReturn(expected);
+
+        ApiResponse<QaReviewResult> response = controller.review(request);
 
         assertTrue(response.success());
         QaReviewResult result = response.data();
@@ -53,13 +77,8 @@ class QaReviewControllerTest {
     }
 
     @Test
-    void review_withEmptyAnswer_shouldReturnBaseScore() {
-        // With empty answer, no sources, and no expected keywords:
-        // - retrievalHit: false → 0.0
-        // - citationPresent: false → 0.0
-        // - expectedKeywords empty → 0.4
-        // - hasUnsupportedClaims: false → no deduction
-        // Score = 0.4
+    void review_withEmptyAnswer_shouldReturnZeroScore() {
+        // QaReviewService returns 0.0 for empty/blank answers
         QaReviewRequest request = new QaReviewRequest(
                 "What is Java?",
                 "",
@@ -67,11 +86,18 @@ class QaReviewControllerTest {
                 List.of()
         );
 
-        ApiResponse<QaReviewResult> response = controller.review(request, new MockHttpServletRequest());
+        QaReviewResult expected = new QaReviewResult(
+                "What is Java?", false, false, true,
+                List.of(), List.of(),
+                false, 0.0, "❌ 未命中知识库 | ❌ 缺少来源引用 | ✅ 内容有据可查 | 🏆 综合评分: 0/100"
+        );
+        when(qaReviewService.review(request)).thenReturn(expected);
+
+        ApiResponse<QaReviewResult> response = controller.review(request);
 
         assertTrue(response.success());
         QaReviewResult result = response.data();
-        assertEquals(0.4, result.score(), 0.01);
+        assertEquals(0.0, result.score(), 0.01);
     }
 
     @Test
@@ -86,7 +112,14 @@ class QaReviewControllerTest {
                 List.of("quantum")
         );
 
-        ApiResponse<QaReviewResult> response = controller.review(request, new MockHttpServletRequest());
+        QaReviewResult expected = new QaReviewResult(
+                "What is quantum computing?", true, false, true,
+                List.of("quantum"), List.of(),
+                true, 0.4, "✅ 命中知识库 | ❌ 缺少来源引用 | ✅ 关键词覆盖 (1/1) | ⚠️ 存在无依据断言 | 🏆 综合评分: 40/100"
+        );
+        when(qaReviewService.review(request)).thenReturn(expected);
+
+        ApiResponse<QaReviewResult> response = controller.review(request);
 
         assertTrue(response.success());
         QaReviewResult result = response.data();
@@ -104,7 +137,14 @@ class QaReviewControllerTest {
                 List.of("Spring", "Java", "framework")
         );
 
-        ApiResponse<QaReviewResult> response = controller.review(request, new MockHttpServletRequest());
+        QaReviewResult expected = new QaReviewResult(
+                "What is Spring?", true, true, true,
+                List.of("Spring", "Java", "framework"), List.of(),
+                false, 0.9, "✅ 命中知识库 | ✅ 标注来源引用 | ✅ 关键词覆盖 (3/3) | ✅ 内容有据可查 | 🏆 综合评分: 90/100"
+        );
+        when(qaReviewService.review(request)).thenReturn(expected);
+
+        ApiResponse<QaReviewResult> response = controller.review(request);
 
         assertTrue(response.success());
         QaReviewResult result = response.data();

@@ -914,7 +914,7 @@ public class HomeController {
                       if (isUser) {
                         el.textContent = text;
                       } else {
-                        el.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : escapeHtml(text).split('\\n').join('<br>');
+                        el.innerHTML = typeof marked !== 'undefined' ? marked.parseSync(text) : escapeHtml(text).split('\\n').join('<br>');
                       }
                     }
                     function addMessage(role, text, sources) {
@@ -1096,7 +1096,7 @@ public class HomeController {
                                 // We track sources count; actual sources will be fetched from run API
                               } else if (eventType === 'delta') {
                                 streamedText += payload;
-                                target.innerHTML = typeof marked !== 'undefined' ? marked.parse(streamedText) : escapeHtml(streamedText).split('\\n').join('<br>');
+                                target.innerHTML = typeof marked !== 'undefined' ? marked.parseSync(streamedText) : escapeHtml(streamedText).split('\\n').join('<br>');
                                 $('messages').scrollTop = $('messages').scrollHeight;
                               } else if (eventType === 'done') {
                                 // session completed

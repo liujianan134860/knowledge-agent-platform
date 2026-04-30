@@ -6,6 +6,8 @@ public record RunEvaluationResponse(
         boolean retrievalHit,
         boolean citationPresent,
         boolean keywordMatch,
-        double score
+        boolean hasUnsupportedClaims,
+        double score,
+        String summary
 ) {
 }
