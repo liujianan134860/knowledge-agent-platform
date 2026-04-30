@@ -1,12 +1,18 @@
 package com.liujianan.agentdemo.harness;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.time.LocalDateTime;
 
 @Embeddable
 public class SessionMessage {
+    @Column(nullable = false, length = 20)
     private String role;
+
+    @Column(columnDefinition = "TEXT")
     private String content;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     public SessionMessage() {

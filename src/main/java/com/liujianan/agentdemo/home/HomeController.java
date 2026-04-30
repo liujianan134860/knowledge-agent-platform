@@ -776,6 +776,7 @@ public class HomeController {
                     let lastAnswer = '';
                     let lastQuestion = '';
                     let token = localStorage.getItem('auth_token');
+                    let currentUserId = localStorage.getItem('auth_user_id');
                     const $ = id => document.getElementById(id);
                     const escapeHtml = text => String(text ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
@@ -809,7 +810,11 @@ public class HomeController {
                       var data = await res.json();
                       if (data.success) {
                         token = data.data.token;
+                        currentUserId = data.data.userId;
                         localStorage.setItem('auth_token', token);
+                        localStorage.setItem('auth_user_id', currentUserId || '');
+                        localStorage.setItem('auth_username', data.data.username || '');
+                        resetAppState();
                         hideAuth();
                         initApp();
                       } else {
@@ -829,7 +834,11 @@ public class HomeController {
                       var data = await res.json();
                       if (data.success) {
                         token = data.data.token;
+                        currentUserId = data.data.userId;
                         localStorage.setItem('auth_token', token);
+                        localStorage.setItem('auth_user_id', currentUserId || '');
+                        localStorage.setItem('auth_username', data.data.username || '');
+                        resetAppState();
                         hideAuth();
                         initApp();
                       } else {
@@ -838,11 +847,28 @@ public class HomeController {
                     }
                     function logout() {
                       localStorage.removeItem('auth_token');
+                      localStorage.removeItem('auth_user_id');
+                      localStorage.removeItem('auth_username');
                       token = null;
-                      currentSessionId = null;
+                      currentUserId = null;
+                      resetAppState();
                       showAuth();
                       $('loginUsername').value = '';
                       $('loginPassword').value = '';
+                    }
+                    function resetAppState() {
+                      currentSessionId = null;
+                      lastSources = [];
+                      lastAnswer = '';
+                      lastQuestion = '';
+                      if ($('sessionList')) $('sessionList').innerHTML = '<div class="session-empty">暂无对话记录</div>';
+                      if ($('docList')) $('docList').innerHTML = '';
+                      if ($('traceList')) $('traceList').innerHTML = '';
+                      if ($('runTimeline')) $('runTimeline').innerHTML = '';
+                      if ($('sessionStatus')) $('sessionStatus').textContent = '未创建会话';
+                      if ($('messages')) {
+                        $('messages').innerHTML = '<div class="message assistant"><div class="avatar assistant">AI</div><div class="bubble">你好，可以先在左侧粘贴文本或上传文档，然后在这里提问。我会根据知识库检索结果生成回答，并显示来源片段。</div></div>';
+                      }
                     }
                     function initApp() {
                       loadDocs();

@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "app_user")
 public class User {
     @Id
-    @Column(length = 20)
+    @Column(length = 64)
     private String id;
 
     @Column(unique = true, nullable = false, length = 30)

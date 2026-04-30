@@ -33,7 +33,7 @@ public class TraceEvent {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 64)
     private String userId;
 
     public TraceEvent() {

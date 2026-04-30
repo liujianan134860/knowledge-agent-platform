@@ -31,7 +31,7 @@ public class ChatSession {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 64)
     private String userId;
 
     public ChatSession() {

@@ -1,6 +1,12 @@
 spring:
   application:
     name: knowledge-agent-platform-test
+  ai:
+    openai:
+      api-key: test-key
+      chat:
+        options:
+          model: test-model
   autoconfigure:
     exclude:
       - org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
