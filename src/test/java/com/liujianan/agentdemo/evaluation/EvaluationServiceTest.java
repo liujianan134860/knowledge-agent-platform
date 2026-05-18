@@ -1,5 +1,7 @@
 package com.liujianan.agentdemo.evaluation;
 
+import com.liujianan.agentdemo.audit.AuditService;
+import com.liujianan.agentdemo.common.AiPlatformProperties;
 import com.liujianan.agentdemo.common.HarnessMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +25,16 @@ class EvaluationServiceTest {
     private EvaluationCaseRepository evaluationRepository;
 
     @Mock
+    private EvaluationRunRepository evaluationRunRepository;
+
+    @Mock
     private QaReviewService qaReviewService;
+
+    @Mock
+    private SemanticJudgeService semanticJudgeService;
+
+    @Mock
+    private AuditService auditService;
 
     private HarnessMetrics harnessMetrics;
     private EvaluationService evaluationService;
@@ -31,7 +42,11 @@ class EvaluationServiceTest {
     @BeforeEach
     void setUp() {
         harnessMetrics = new HarnessMetrics(new SimpleMeterRegistry());
-        evaluationService = new EvaluationService(evaluationRepository, harnessMetrics, qaReviewService);
+        evaluationService = new EvaluationService(evaluationRepository, evaluationRunRepository, harnessMetrics,
+                qaReviewService, semanticJudgeService, new AiPlatformProperties(), auditService);
+        lenient().when(evaluationRunRepository.save(any(EvaluationRun.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(semanticJudgeService.judge(anyString(), anyString(), anyList()))
+                .thenReturn(new SemanticJudgeService.JudgeResult(0.5, "fallback", "test"));
     }
 
     @Test
@@ -99,6 +114,8 @@ class EvaluationServiceTest {
 
         // Verify metrics were recorded
         assertEquals(1.0, harnessMetrics.getEvaluationRunCount(), 0.001);
+        verify(evaluationRunRepository).save(any(EvaluationRun.class));
+        verify(auditService).record(eq("user1"), eq("EVALUATION_RUN"), eq("EVALUATION_CASE"), eq("1"), anyMap());
     }
 
     @Test

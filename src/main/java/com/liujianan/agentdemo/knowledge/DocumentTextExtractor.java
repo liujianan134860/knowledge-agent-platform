@@ -9,12 +9,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Component
 public class DocumentTextExtractor {
     public String extract(MultipartFile file) {
+        return extractWithMetadata(file).text();
+    }
+
+    public ExtractedDocument extractWithMetadata(MultipartFile file) {
         String filename = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
         String lowerName = filename.toLowerCase(Locale.ROOT);
         try {
@@ -22,10 +28,11 @@ public class DocumentTextExtractor {
                 return extractPdf(file);
             }
             if (lowerName.endsWith(".docx")) {
-                return extractDocx(file);
+                return singlePage(extractDocx(file), "docx");
             }
             if (lowerName.endsWith(".txt") || lowerName.endsWith(".md")) {
-                return new String(file.getBytes(), StandardCharsets.UTF_8);
+                return singlePage(new String(file.getBytes(), StandardCharsets.UTF_8),
+                        lowerName.endsWith(".md") ? "markdown" : "text");
             }
             throw new IllegalArgumentException("unsupported file type: " + filename);
         } catch (Exception exception) {
@@ -33,10 +40,21 @@ public class DocumentTextExtractor {
         }
     }
 
-    private String extractPdf(MultipartFile file) throws Exception {
+    private ExtractedDocument extractPdf(MultipartFile file) throws Exception {
         try (InputStream inputStream = file.getInputStream(); PDDocument document = PDDocument.load(inputStream)) {
             PDFTextStripper stripper = new PDFTextStripper();
-            return stripper.getText(document);
+            StringBuilder text = new StringBuilder();
+            List<PageSpan> pages = new ArrayList<>();
+            for (int page = 1; page <= document.getNumberOfPages(); page++) {
+                stripper.setStartPage(page);
+                stripper.setEndPage(page);
+                int start = text.length();
+                String pageText = stripper.getText(document);
+                text.append(pageText);
+                int end = text.length();
+                pages.add(new PageSpan(page, start, end));
+            }
+            return new ExtractedDocument(text.toString(), "pdf", pages);
         }
     }
 
@@ -48,5 +66,27 @@ public class DocumentTextExtractor {
                     .filter(text -> text != null && !text.isBlank())
                     .collect(Collectors.joining("\n"));
         }
+    }
+
+    private ExtractedDocument singlePage(String text, String sourceType) {
+        String safeText = text == null ? "" : text;
+        return new ExtractedDocument(safeText, sourceType, List.of(new PageSpan(1, 0, safeText.length())));
+    }
+
+    public record ExtractedDocument(String text, String sourceType, List<PageSpan> pages) {
+        public Integer pageForOffset(int offset) {
+            if (pages == null || pages.isEmpty()) {
+                return null;
+            }
+            for (PageSpan page : pages) {
+                if (offset >= page.startOffset() && offset < page.endOffset()) {
+                    return page.pageNumber();
+                }
+            }
+            return pages.get(pages.size() - 1).pageNumber();
+        }
+    }
+
+    public record PageSpan(Integer pageNumber, int startOffset, int endOffset) {
     }
 }

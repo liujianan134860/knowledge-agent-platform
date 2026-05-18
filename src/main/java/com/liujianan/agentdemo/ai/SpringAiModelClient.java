@@ -4,23 +4,22 @@ import com.liujianan.agentdemo.harness.ContextBuilder;
 import com.liujianan.agentdemo.harness.SessionMessage;
 import com.liujianan.agentdemo.knowledge.DocumentChunk;
 import com.liujianan.agentdemo.llm.ModelClient;
+import org.springframework.ai.chat.client.ChatClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -31,15 +30,34 @@ import java.util.function.Consumer;
  */
 @Service
 @Primary
-@ConditionalOnBean(ChatModel.class)
 public class SpringAiModelClient implements ModelClient {
     private static final Logger log = LoggerFactory.getLogger(SpringAiModelClient.class);
 
-    private final ChatModel chatModel;
+    private final ChatClient chatClient;
+    private final List<ToolCallbackProvider> toolCallbackProviders;
 
     public SpringAiModelClient(ChatModel chatModel) {
-        this.chatModel = chatModel;
-        log.info("SpringAiModelClient initialized with ChatModel: {}", chatModel.getClass().getSimpleName());
+        this(chatModel, List.of());
+    }
+
+    public SpringAiModelClient(ChatModel chatModel, List<ToolCallbackProvider> toolCallbackProviders) {
+        this(chatModel == null ? null : ChatClient.builder(chatModel).build(), toolCallbackProviders);
+        log.info("SpringAiModelClient initialized with ChatModel: {}", chatModel == null ? "none" : chatModel.getClass().getSimpleName());
+    }
+
+    private final DeepSeekReasoningAdvisor reasoningAdvisor = new DeepSeekReasoningAdvisor();
+
+    @Autowired
+    public SpringAiModelClient(ObjectProvider<ChatModel> chatModelProvider,
+                               ObjectProvider<ToolCallbackProvider> toolCallbackProvider) {
+        this(chatModelProvider.getIfAvailable(),
+                toolCallbackProvider.orderedStream().toList());
+    }
+
+    private SpringAiModelClient(ChatClient chatClient, List<ToolCallbackProvider> toolCallbackProviders) {
+        this.chatClient = chatClient;
+        this.toolCallbackProviders = toolCallbackProviders == null ? List.of() : toolCallbackProviders;
+        log.info("SpringAiModelClient loaded {} tool callback provider(s)", this.toolCallbackProviders.size());
     }
 
     @Override
@@ -49,10 +67,17 @@ public class SpringAiModelClient implements ModelClient {
 
     @Override
     public String answer(String question, List<DocumentChunk> sources, List<SessionMessage> history) {
+        if (chatClient == null) {
+            return fallback(question, sources) + "\n\n[Spring AI ChatModel is not configured]";
+        }
         try {
-            Prompt prompt = buildPrompt(question, sources, history);
-            ChatResponse response = chatModel.call(prompt);
-            String result = response.getResult().getOutput().getText();
+            List<Message> messages = buildMessages(question, sources, history);
+            String result = chatClient.prompt()
+                    .messages(messages)
+                    .advisors(reasoningAdvisor)
+                    .toolCallbacks(toolCallbackProviders.toArray(ToolCallbackProvider[]::new))
+                    .call()
+                    .content();
             return result != null ? result : "";
         } catch (Exception e) {
             log.error("Spring AI chat call failed", e);
@@ -63,16 +88,24 @@ public class SpringAiModelClient implements ModelClient {
     @Override
     public void answerStream(String question, List<DocumentChunk> sources, List<SessionMessage> history,
                              Consumer<String> onDelta, Consumer<String> onDone, Consumer<String> onError) {
+        if (chatClient == null) {
+            String text = fallback(question, sources) + "\n\n[Spring AI ChatModel is not configured]";
+            streamText(text, onDelta);
+            onDone.accept(text);
+            return;
+        }
         try {
-            Prompt prompt = buildPrompt(question, sources, history);
-            Flux<ChatResponse> stream = chatModel.stream(prompt);
+            List<Message> messages = buildMessages(question, sources, history);
+            Flux<String> stream = chatClient.prompt()
+                    .messages(messages)
+                    .advisors(reasoningAdvisor)
+                    .toolCallbacks(toolCallbackProviders.toArray(ToolCallbackProvider[]::new))
+                    .stream()
+                    .content();
             AtomicReference<StringBuilder> fullBuilder = new AtomicReference<>(new StringBuilder());
 
             stream.subscribe(
-                    response -> {
-                        String token = response.getResult() != null
-                                ? response.getResult().getOutput().getText()
-                                : "";
+                    token -> {
                         if (token != null && !token.isEmpty()) {
                             fullBuilder.get().append(token);
                             onDelta.accept(token);
@@ -80,29 +113,43 @@ public class SpringAiModelClient implements ModelClient {
                     },
                     error -> {
                         log.error("Spring AI stream error", error);
-                        onError.accept(error.getMessage());
+                        streamFallback(question, sources, onDelta, onDone);
                     },
                     () -> onDone.accept(fullBuilder.get().toString())
             );
         } catch (Exception e) {
             log.error("Spring AI stream call failed", e);
             String text = fallback(question, sources);
-            for (int i = 0; i < text.length(); i += 3) {
-                int end = Math.min(i + 3, text.length());
-                onDelta.accept(text.substring(i, end));
-                try { Thread.sleep(30); } catch (InterruptedException ignored) {}
-            }
+            streamText(text, onDelta);
             onDone.accept(text);
         }
     }
 
-    private Prompt buildPrompt(String question, List<DocumentChunk> sources, List<SessionMessage> history) {
+    private void streamFallback(String question, List<DocumentChunk> sources,
+                                Consumer<String> onDelta, Consumer<String> onDone) {
+        String text = fallback(question, sources);
+        streamText(text, onDelta);
+        onDone.accept(text);
+    }
+
+    private void streamText(String text, Consumer<String> onDelta) {
+        for (int i = 0; i < text.length(); i += 3) {
+            int end = Math.min(i + 3, text.length());
+            onDelta.accept(text.substring(i, end));
+            try {
+                Thread.sleep(30);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
+    private List<Message> buildMessages(String question, List<DocumentChunk> sources, List<SessionMessage> history) {
         String systemPrompt = ContextBuilder.buildSystemPrompt(sources);
-        SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemPrompt);
-        Message systemMessage = systemPromptTemplate.createMessage();
 
         List<Message> messages = new ArrayList<>();
-        messages.add(systemMessage);
+        messages.add(new org.springframework.ai.chat.messages.SystemMessage(systemPrompt));
 
         // Add conversation history
         if (history != null && history.size() > 1) {
@@ -122,7 +169,7 @@ public class SpringAiModelClient implements ModelClient {
         String userMessage = ContextBuilder.buildUserMessage(question, sources);
         messages.add(new UserMessage(userMessage));
 
-        return new Prompt(messages);
+        return messages;
     }
 
     private String fallback(String question, List<DocumentChunk> sources) {

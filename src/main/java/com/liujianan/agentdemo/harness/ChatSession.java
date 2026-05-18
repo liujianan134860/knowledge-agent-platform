@@ -1,13 +1,9 @@
 package com.liujianan.agentdemo.harness;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Transient;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -20,9 +16,7 @@ public class ChatSession {
     @Column(length = 36)
     private String id;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "session_message", joinColumns = @JoinColumn(name = "session_id"))
-    @OrderColumn(name = "message_order")
+    @Transient
     private List<SessionMessage> messages = new ArrayList<>();
 
     @Column(nullable = false)

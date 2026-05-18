@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -33,14 +34,21 @@ public class VectorKnowledgeService {
      * Index a DocumentChunk into the vector store.
      */
     public Document index(DocumentChunk chunk) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("chunkId", String.valueOf(chunk.getId()));
+        metadata.put("documentId", chunk.getDocumentId() != null ? chunk.getDocumentId() : "");
+        metadata.put("chunkIndex", chunk.getChunkIndex() == null ? "" : String.valueOf(chunk.getChunkIndex()));
+        metadata.put("pageNumber", chunk.getPageNumber() == null ? "" : String.valueOf(chunk.getPageNumber()));
+        metadata.put("startOffset", chunk.getStartOffset() == null ? "" : String.valueOf(chunk.getStartOffset()));
+        metadata.put("endOffset", chunk.getEndOffset() == null ? "" : String.valueOf(chunk.getEndOffset()));
+        metadata.put("sourceType", chunk.getSourceType() != null ? chunk.getSourceType() : "");
+        metadata.put("sourceName", chunk.getSourceName() != null ? chunk.getSourceName() : "");
+        metadata.put("title", chunk.getTitle() != null ? chunk.getTitle() : "");
+        metadata.put("userId", chunk.getUserId() != null ? chunk.getUserId() : "");
+        metadata.put("tags", chunk.getTags() != null ? String.join(",", chunk.getTags()) : "");
         Document document = new Document(
                 chunk.getContent(),
-                Map.of(
-                        "chunkId", String.valueOf(chunk.getId()),
-                        "title", chunk.getTitle() != null ? chunk.getTitle() : "",
-                        "userId", chunk.getUserId() != null ? chunk.getUserId() : "",
-                        "tags", chunk.getTags() != null ? String.join(",", chunk.getTags()) : ""
-                )
+                metadata
         );
         vectorStore.add(List.of(document));
         log.debug("Indexed chunk {}: {}...", chunk.getId(), truncate(chunk.getContent(), 60));

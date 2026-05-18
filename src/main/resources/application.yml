@@ -1,6 +1,8 @@
 spring:
   application:
     name: knowledge-agent-platform
+  autoconfigure:
+    exclude: org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreAutoConfiguration
   servlet:
     multipart:
       max-file-size: 20MB
@@ -12,7 +14,7 @@ spring:
     password: ${POSTGRES_PASSWORD:}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
@@ -21,6 +23,10 @@ spring:
     console:
       enabled: true
       path: /h2-console
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
   # Spring AI Configuration
   ai:
@@ -30,12 +36,31 @@ spring:
       chat:
         options:
           model: ${DEEPSEEK_MODEL:deepseek-chat}
+      embedding:
+        base-url: ${EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+        api-key: ${QWEN_API_KEY:}
+        options:
+          model: ${EMBEDDING_MODEL:text-embedding-v4}
+          dimensions: ${EMBEDDING_DIMENSIONS:1536}
     vectorstore:
       pgvector:
-        initialize-schema: ${PGVECTOR_INIT_SCHEMA:false}
-        dimensions: 1536
+        initialize-schema: false
+        dimensions: ${EMBEDDING_DIMENSIONS:1536}
         distance-type: cosine_distance
     mcp:
+      client:
+        enabled: ${GITHUB_MCP_ENABLED:false}
+        name: knowledge-agent-platform
+        version: 1.0.0
+        type: SYNC
+        request-timeout: ${GITHUB_MCP_REQUEST_TIMEOUT:30s}
+        toolcallback:
+          enabled: true
+        streamable-http:
+          connections:
+            github:
+              url: ${GITHUB_MCP_URL:https://api.githubcopilot.com}
+              endpoint: ${GITHUB_MCP_ENDPOINT:/mcp/}
       server:
         enabled: true
         name: knowledge-agent-platform
@@ -67,3 +92,50 @@ deepseek:
   api-key: ${DEEPSEEK_API_KEY:}
   base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
   model: ${DEEPSEEK_MODEL:deepseek-chat}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+ai-platform:
+  prompt-version: ${PROMPT_VERSION:prompt-v1}
+  retrieval-version: ${RETRIEVAL_VERSION:hybrid-v1}
+  retrieval-top-k: ${RETRIEVAL_TOP_K:3}
+  model-version: ${DEEPSEEK_MODEL:deepseek-chat}
+  embedding-provider: ${EMBEDDING_PROVIDER:aliyun-bailian}
+  embedding-model: ${EMBEDDING_MODEL:text-embedding-v4}
+  embedding-dimensions: ${EMBEDDING_DIMENSIONS:1536}
+  llm-judge-enabled: ${LLM_JUDGE_ENABLED:true}
+  judge-provider: qwen
+  judge-model: ${QWEN_JUDGE_MODEL:qwen3.6-plus}
+  rerank-enabled: ${RERANK_ENABLED:true}
+  rerank-provider: aliyun-bailian
+  rerank-model: ${BAILIAN_RERANK_MODEL:qwen3-rerank}
+  rerank-candidate-multiplier: ${RERANK_CANDIDATE_MULTIPLIER:4}
+  model-max-attempts: ${MODEL_MAX_ATTEMPTS:2}
+  model-circuit-breaker-threshold: ${MODEL_CIRCUIT_BREAKER_THRESHOLD:3}
+  model-circuit-breaker-open-ms: ${MODEL_CIRCUIT_BREAKER_OPEN_MS:30000}
+  refresh-token-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS:604800000}
+
+judge:
+  qwen:
+    api-key: ${QWEN_API_KEY:}
+    base-url: ${QWEN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    model: ${QWEN_JUDGE_MODEL:qwen3.6-plus}
+    timeout-seconds: ${QWEN_JUDGE_TIMEOUT_SECONDS:30}
+
+rerank:
+  bailian:
+    api-key: ${QWEN_API_KEY:}
+    base-url: ${BAILIAN_RERANK_BASE_URL:https://dashscope.aliyuncs.com/compatible-api/v1}
+    model: ${BAILIAN_RERANK_MODEL:qwen3-rerank}
+    timeout-seconds: ${BAILIAN_RERANK_TIMEOUT_SECONDS:30}
+
+github:
+  mcp:
+    http:
+      enabled: ${GITHUB_MCP_HTTP_ENABLED:false}
+    token: ${GITHUB_MCP_TOKEN:}
+    toolsets: ${GITHUB_MCP_TOOLSETS:}
+    readonly: ${GITHUB_MCP_READONLY:}

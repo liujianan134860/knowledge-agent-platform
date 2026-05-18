@@ -2,6 +2,7 @@ package com.liujianan.agentdemo.harness;
 
 import com.liujianan.agentdemo.chat.ChatRequest;
 import com.liujianan.agentdemo.chat.ChatResponse;
+import com.liujianan.agentdemo.common.AiPlatformProperties;
 import com.liujianan.agentdemo.common.HarnessMetrics;
 import com.liujianan.agentdemo.knowledge.DocumentChunk;
 import com.liujianan.agentdemo.knowledge.KnowledgeService;
@@ -49,12 +50,13 @@ class HarnessOrchestratorTest {
     @BeforeEach
     void setUp() {
         harnessMetrics = new HarnessMetrics(new SimpleMeterRegistry());
+        AiPlatformProperties aiPlatformProperties = new AiPlatformProperties();
         // Create agents with real metrics for full integration test
         RetrievalAgent realRetrievalAgent = new RetrievalAgent(knowledgeService, traceAgent, harnessMetrics);
-        AnswerComposer realAnswerComposer = new AnswerComposer(modelClient, traceAgent, harnessMetrics);
+        AnswerComposer realAnswerComposer = new AnswerComposer(modelClient, traceAgent, harnessMetrics, aiPlatformProperties);
 
         orchestrator = new HarnessOrchestrator(sessionService, realRetrievalAgent,
-                realAnswerComposer, traceAgent);
+                realAnswerComposer, traceAgent, aiPlatformProperties);
     }
 
     @Test

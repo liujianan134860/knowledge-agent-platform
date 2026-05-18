@@ -4,6 +4,12 @@ spring:
   ai:
     openai:
       api-key: test-key
+      embedding:
+        base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+        api-key: test-embedding-key
+        options:
+          model: text-embedding-v4
+          dimensions: 1536
       chat:
         options:
           model: test-model
@@ -18,11 +24,15 @@ spring:
     password:
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+  flyway:
+    enabled: true
+    clean-disabled: false
+    locations: classpath:db/migration
 
 server:
   port: 0
@@ -35,3 +45,42 @@ management:
   endpoint:
     health:
       show-details: always
+
+security:
+  jwt:
+    secret: test-jwt-secret-with-at-least-32-characters
+    expiration-ms: 86400000
+
+ai-platform:
+  prompt-version: test-prompt
+  retrieval-version: test-hybrid
+  retrieval-top-k: 3
+  model-version: test-model
+  embedding-provider: aliyun-bailian
+  embedding-model: text-embedding-v4
+  embedding-dimensions: 1536
+  llm-judge-enabled: true
+  judge-provider: qwen
+  judge-model: qwen3.6-plus
+  rerank-enabled: true
+  rerank-provider: aliyun-bailian
+  rerank-model: qwen3-rerank
+  rerank-candidate-multiplier: 4
+  model-max-attempts: 2
+  model-circuit-breaker-threshold: 3
+  model-circuit-breaker-open-ms: 30000
+  refresh-token-expiration-ms: 604800000
+
+judge:
+  qwen:
+    api-key:
+    base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen3.6-plus
+    timeout-seconds: 5
+
+rerank:
+  bailian:
+    api-key:
+    base-url: https://dashscope.aliyuncs.com/compatible-api/v1
+    model: qwen3-rerank
+    timeout-seconds: 5

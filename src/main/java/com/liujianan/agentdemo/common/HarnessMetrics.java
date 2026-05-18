@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Custom Micrometer metrics for RAG, LLM, Tool, and Evaluation tracking.
@@ -21,6 +22,7 @@ public class HarnessMetrics {
     private final Counter evaluationRunCounter;
     private final Counter evaluationPassCounter;
     private final Counter evaluationFailCounter;
+    private final AtomicInteger modelCircuitOpenGauge = new AtomicInteger(0);
 
     public HarnessMetrics(MeterRegistry registry) {
         this.retrievalHitCounter = Counter.builder("rag.retrieval.hit")
@@ -51,6 +53,7 @@ public class HarnessMetrics {
         this.evaluationFailCounter = Counter.builder("evaluation.run.fail")
                 .description("Number of evaluation runs that failed (score < 0.6)")
                 .register(registry);
+        registry.gauge("llm.circuit.open", modelCircuitOpenGauge);
     }
 
     // --- Retrieval Metrics ---
@@ -98,6 +101,10 @@ public class HarnessMetrics {
         }
     }
 
+    public void recordModelCircuitOpen(boolean open) {
+        modelCircuitOpenGauge.set(open ? 1 : 0);
+    }
+
     // --- Getters for testing/verification ---
 
     public Timer getLlmAnswerTimer() {
@@ -126,5 +133,9 @@ public class HarnessMetrics {
 
     public double getEvaluationRunCount() {
         return evaluationRunCounter.count();
+    }
+
+    public int getModelCircuitOpen() {
+        return modelCircuitOpenGauge.get();
     }
 }

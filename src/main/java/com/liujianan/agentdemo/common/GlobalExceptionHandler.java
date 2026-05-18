@@ -18,24 +18,24 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(error -> error.getField() + " " + error.getDefaultMessage())
                 .orElse("invalid request");
-        return ApiResponse.fail(message);
+        return ApiResponse.fail("VALIDATION_ERROR", message);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleIllegalArgument(IllegalArgumentException exception) {
-        return ApiResponse.fail(exception.getMessage());
+        return ApiResponse.fail("BAD_REQUEST", exception.getMessage());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiResponse<Void> handleUploadSize() {
-        return ApiResponse.fail("uploaded file is larger than the 20MB limit");
+        return ApiResponse.fail("UPLOAD_TOO_LARGE", "uploaded file is larger than the 20MB limit");
     }
 
     @ExceptionHandler(io.jsonwebtoken.JwtException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ApiResponse<Void> handleJwt(io.jsonwebtoken.JwtException exception) {
-        return ApiResponse.fail("invalid token");
+        return ApiResponse.fail("INVALID_TOKEN", "invalid token");
     }
 }

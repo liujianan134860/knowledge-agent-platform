@@ -1,0 +1,33 @@
+# Maven
+target/
+*.jar
+*.war
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment (secrets managed by Render)
+.env
+.env.example
+
+# Git
+.git/
+.gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data
+data/
+*.db
+*.mv.db
+vector-store.json
+
+# Logs
+*.log
+
+# Node (frontend is static, already in src/main/resources)
+node_modules/

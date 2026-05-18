@@ -1,5 +1,7 @@
 package com.liujianan.agentdemo.harness;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,5 +28,12 @@ public class TraceRecorder {
             return traceRepository.findByUserIdAndSessionIdOrderByCreatedAtDesc(userId, sessionId);
         }
         return traceRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    public Page<TraceEvent> list(String sessionId, String userId, Pageable pageable) {
+        if (sessionId != null) {
+            return traceRepository.findByUserIdAndSessionId(userId, sessionId, pageable);
+        }
+        return traceRepository.findByUserId(userId, pageable);
     }
 }

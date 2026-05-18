@@ -1,8 +1,9 @@
 package com.liujianan.agentdemo.persistence;
 
 import com.liujianan.agentdemo.harness.ChatSession;
+import com.liujianan.agentdemo.harness.ChatMessage;
+import com.liujianan.agentdemo.harness.ChatMessageRepository;
 import com.liujianan.agentdemo.harness.ChatSessionRepository;
-import com.liujianan.agentdemo.harness.SessionMessage;
 import com.liujianan.agentdemo.knowledge.DocumentChunk;
 import com.liujianan.agentdemo.knowledge.DocumentChunkRepository;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UserDataIsolationTest {
     @Autowired
     private ChatSessionRepository chatSessionRepository;
+
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
 
     @Autowired
     private DocumentChunkRepository documentChunkRepository;
@@ -50,16 +54,15 @@ class UserDataIsolationTest {
         String longAnswer = "assistant-answer-".repeat(80);
         ChatSession session = new ChatSession("s-long-answer", new ArrayList<>(),
                 LocalDateTime.now(), LocalDateTime.now(), "u-a");
-        session.setMessages(List.of(
-                new SessionMessage("user", "question", LocalDateTime.now()),
-                new SessionMessage("assistant", longAnswer, LocalDateTime.now())
-        ));
-
         chatSessionRepository.saveAndFlush(session);
+        chatMessageRepository.save(new ChatMessage(null, "s-long-answer", "u-a",
+                "user", "question", LocalDateTime.now()));
+        chatMessageRepository.saveAndFlush(new ChatMessage(null, "s-long-answer", "u-a",
+                "assistant", longAnswer, LocalDateTime.now()));
 
-        ChatSession reloaded = chatSessionRepository.findById("s-long-answer").orElseThrow();
-        assertThat(reloaded.getMessages()).hasSize(2);
-        assertThat(reloaded.getMessages().get(1).getRole()).isEqualTo("assistant");
-        assertThat(reloaded.getMessages().get(1).getContent()).isEqualTo(longAnswer);
+        List<ChatMessage> reloaded = chatMessageRepository.findByUserIdAndSessionIdOrderByCreatedAtAsc("u-a", "s-long-answer");
+        assertThat(reloaded).hasSize(2);
+        assertThat(reloaded.get(1).getRole()).isEqualTo("assistant");
+        assertThat(reloaded.get(1).getContent()).isEqualTo(longAnswer);
     }
 }

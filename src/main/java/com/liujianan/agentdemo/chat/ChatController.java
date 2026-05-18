@@ -49,7 +49,7 @@ public class ChatController {
                         }
                 );
             } catch (Exception e) {
-                sendEvent(emitter, "error", e.getMessage());
+                sendEvent(emitter, "error", safeError(e));
                 emitter.complete();
             }
         });
@@ -58,7 +58,15 @@ public class ChatController {
 
     private void sendEvent(SseEmitter emitter, String name, String data) {
         try {
-            emitter.send(SseEmitter.event().name(name).data(data));
+            emitter.send(SseEmitter.event().name(name).data(data == null ? "" : data));
         } catch (IOException ignored) {}
+    }
+
+    private String safeError(Exception exception) {
+        if (exception == null) {
+            return "unknown error";
+        }
+        String message = exception.getMessage();
+        return message == null || message.isBlank() ? exception.getClass().getSimpleName() : message;
     }
 }

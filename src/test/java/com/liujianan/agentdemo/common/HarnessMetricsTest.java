@@ -115,5 +115,17 @@ class HarnessMetricsTest {
         assertNotNull(meterRegistry.get("evaluation.run.total").counter());
         assertNotNull(meterRegistry.get("evaluation.run.pass").counter());
         assertNotNull(meterRegistry.get("evaluation.run.fail").counter());
+        assertNotNull(meterRegistry.get("llm.circuit.open").gauge());
+    }
+
+    @Test
+    void recordModelCircuitOpen_shouldUpdateGauge() {
+        harnessMetrics.recordModelCircuitOpen(true);
+        assertEquals(1, harnessMetrics.getModelCircuitOpen());
+        assertEquals(1.0, meterRegistry.get("llm.circuit.open").gauge().value(), 0.001);
+
+        harnessMetrics.recordModelCircuitOpen(false);
+        assertEquals(0, harnessMetrics.getModelCircuitOpen());
+        assertEquals(0.0, meterRegistry.get("llm.circuit.open").gauge().value(), 0.001);
     }
 }

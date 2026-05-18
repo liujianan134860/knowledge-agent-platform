@@ -1,6 +1,7 @@
 package com.liujianan.agentdemo.harness;
 
 import com.liujianan.agentdemo.common.HarnessMetrics;
+import com.liujianan.agentdemo.common.AiPlatformProperties;
 import com.liujianan.agentdemo.knowledge.DocumentChunk;
 import com.liujianan.agentdemo.llm.ModelClient;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -35,7 +36,7 @@ class AnswerComposerTest {
     @BeforeEach
     void setUp() {
         harnessMetrics = new HarnessMetrics(new SimpleMeterRegistry());
-        answerComposer = new AnswerComposer(modelClient, traceAgent, harnessMetrics);
+        answerComposer = new AnswerComposer(modelClient, traceAgent, harnessMetrics, new AiPlatformProperties());
     }
 
     @Test
@@ -135,5 +136,20 @@ class AnswerComposerTest {
         assertEquals(1.0, harnessMetrics.getToolFailureCount(), 0.001);
         verify(traceAgent).record(eq("session1"), eq("ANSWER"), eq("stream failed"),
                 argThat(map -> map.containsKey("error")), eq("user1"));
+    }
+
+    @Test
+    void compose_whenModelKeepsFailing_shouldOpenCircuitGauge() {
+        AiPlatformProperties properties = new AiPlatformProperties();
+        properties.setModelMaxAttempts(1);
+        properties.setModelCircuitBreakerThreshold(1);
+        AnswerComposer composer = new AnswerComposer(modelClient, traceAgent, harnessMetrics, properties);
+        when(modelClient.answer(anyString(), anyList(), anyList()))
+                .thenThrow(new RuntimeException("model unavailable"));
+
+        assertThrows(RuntimeException.class, () -> composer.compose("session1", "question",
+                new ArrayList<>(), new ArrayList<>(), System.currentTimeMillis(), "user1"));
+
+        assertEquals(1, harnessMetrics.getModelCircuitOpen());
     }
 }
