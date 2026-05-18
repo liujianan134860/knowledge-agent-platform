@@ -7,19 +7,15 @@ import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 import java.io.File;
 import java.nio.file.Path;
 
 /**
  * Provides an in-memory SimpleVectorStore with file persistence
- * as a fallback when pgvector is not available (local development).
- * <p>
- * On Render (profile=render), PgVectorStore is used instead.
+ * for local development and production (H2-backed).
  */
 @Configuration
-@Profile("!render")
 public class SimpleVectorStoreConfig {
     private static final Logger log = LoggerFactory.getLogger(SimpleVectorStoreConfig.class);
     private static final String STORE_FILE = "data/vector-store.json";

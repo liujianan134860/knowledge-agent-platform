@@ -1,5 +1,5 @@
 # ──────────────────────────────────────────────
-# Render Blueprint — 一键部署配置
+# Render Blueprint — 一键部署配置 (H2 版本)
 # 使用方法:
 #   1. 将代码推送到 GitHub
 #   2. Render Dashboard → Blueprints → New
@@ -9,16 +9,6 @@
 # ──────────────────────────────────────────────
 
 services:
-  # ── PostgreSQL 16（Render 托管，自动备份，支持 pgvector）──
-  - type: postgres
-    name: knowledge-agent-db
-    plan: free
-    ipAllowList: []          # 仅允许内部服务连接
-    databases:
-      - name: knowledge_agent
-    user: agent
-    password: "AgentStrong!23" # 首次部署后请修改
-
   # ── Spring Boot Web 服务 ────────────────────────────────
   - type: web
     name: knowledge-agent-platform
@@ -28,10 +18,6 @@ services:
     healthCheckPath: /actuator/health
 
     envVars:
-      # ── Spring 激活 Render 配置 ──
-      - key: SPRING_PROFILES_ACTIVE
-        value: render
-
       # ── DeepSeek LLM（⚠ 部署后填入真实 Key）──
       - key: DEEPSEEK_API_KEY
         sync: false
@@ -53,10 +39,6 @@ services:
         value: qwen3.6-plus
       - key: BAILIAN_RERANK_MODEL
         value: qwen3-rerank
-
-      # ── 清除本地 autoconfigure exclude（Render 使用 pgvector）──
-      - key: spring.autoconfigure.exclude
-        value: ""
 
       # ── JWT（自动生成）──
       - key: JWT_SECRET
@@ -82,5 +64,4 @@ services:
       - key: RERANK_ENABLED
         value: "true"
 
-      # ⚠ 以下变量由 Render 自动注入（数据库链接），无需手动设置：
-      # PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD
+      # 数据库使用默认 H2（内嵌文件数据库），无需额外配置

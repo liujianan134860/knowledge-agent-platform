@@ -35,7 +35,7 @@ public class EmbeddingConfigurationValidator implements ApplicationRunner {
         String embeddingBaseUrl = environment.getProperty("spring.ai.openai.embedding.base-url", "");
         String embeddingModel = properties.getEmbeddingModel();
         int configuredDimensions = properties.getEmbeddingDimensions();
-        int vectorDimensions = environment.getProperty("spring.ai.vectorstore.pgvector.dimensions", Integer.class, configuredDimensions);
+        int vectorDimensions = configuredDimensions;
 
         boolean dimensionMatch = configuredDimensions == vectorDimensions;
         boolean deepSeekChat = chatBaseUrl.contains("deepseek");

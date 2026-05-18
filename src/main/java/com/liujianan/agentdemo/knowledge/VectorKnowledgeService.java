@@ -15,7 +15,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Vector-based knowledge service using Spring AI VectorStore (pgvector).
+ * Vector-based knowledge service using Spring AI VectorStore (SimpleVectorStore).
  * Indexes DocumentChunks as embeddings and performs similarity search.
  */
 @Service
