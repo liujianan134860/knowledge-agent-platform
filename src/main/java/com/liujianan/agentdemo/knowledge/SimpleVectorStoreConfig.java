@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,9 +14,11 @@ import java.nio.file.Path;
 
 /**
  * Provides an in-memory SimpleVectorStore with file persistence
- * for local development and production (H2-backed).
+ * for local development (H2-backed, default).
+ * Disabled when PgVectorStore is active (PGVECTOR_INIT_SCHEMA=true).
  */
 @Configuration
+@ConditionalOnProperty(prefix = "spring.vectorstore.pgvector", name = "initialize-schema", havingValue = "false", matchIfMissing = true)
 public class SimpleVectorStoreConfig {
     private static final Logger log = LoggerFactory.getLogger(SimpleVectorStoreConfig.class);
     private static final String STORE_FILE = "data/vector-store.json";

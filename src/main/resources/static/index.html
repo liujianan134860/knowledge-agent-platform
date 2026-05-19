@@ -508,6 +508,34 @@
       .chat { height: 100vh; }
       .composer-inner { grid-template-columns: 1fr; }
     }
+    /* Agent Console */
+    #agentTask { width: 100%; height: 60px; border: 1px solid #d8e1ec; border-radius: 6px; padding: 6px 8px; resize: vertical; font-size: 13px; }
+    .agent-live { border: 1px solid #174a78; border-radius: 8px; background: #f0f8ff; padding: 8px; max-height: 300px; overflow-y: auto; }
+    .agent-step { padding: 6px 8px; margin-bottom: 4px; border-radius: 6px; font-size: 12px; line-height: 1.4; border-left: 3px solid #ccc; }
+    .agent-step.thought { border-left-color: #6366f1; background: #f5f3ff; }
+    .agent-step.action { border-left-color: #f59e0b; background: #fffbeb; }
+    .agent-step.observation { border-left-color: #10b981; background: #ecfdf5; }
+    .agent-step.final { border-left-color: #174a78; background: #e8f4fd; }
+    .agent-step.error { border-left-color: #ef4444; background: #fef2f2; }
+    .agent-step .step-type { font-weight: 700; font-size: 11px; text-transform: uppercase; margin-bottom: 2px; }
+    .agent-step .step-content { color: #334155; word-break: break-word; }
+    .agent-step .step-tool { color: #64748b; font-size: 11px; margin-top: 2px; }
+    .agent-approval { border: 1px solid #f59e0b; border-radius: 8px; background: #fffbeb; padding: 8px; margin-top: 8px; }
+    .agent-approval h4 { color: #92400e; margin: 0 0 4px; }
+    .agent-run-item { border: 1px solid #d8e1ec; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; background: #fff; cursor: pointer; font-size: 12px; }
+    .agent-run-item:hover { border-color: #174a78; }
+    .agent-run-item .run-header { display: flex; justify-content: space-between; align-items: center; }
+    .agent-run-item .run-task { font-weight: 600; color: #174a78; }
+    .agent-run-item .run-status { font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+    .agent-run-item .run-meta { color: #64748b; font-size: 11px; margin-top: 2px; }
+    .status-COMPLETED { background: #d1fae5; color: #065f46; }
+    .status-FAILED { background: #fee2e2; color: #991b1b; }
+    .status-IN_PROGRESS { background: #dbeafe; color: #1e40af; }
+    .status-TIMEOUT { background: #fef3c7; color: #92400e; }
+    .agent-steps-detail { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; }
+    .agent-steps-detail.open { display: block; }
+    .agent-steps-detail .step-detail { padding: 4px 0 4px 12px; border-left: 2px solid #e2e8f0; margin-left: 4px; font-size: 11px; color: #475569; }
+    .agent-steps-detail .step-detail .stype { font-weight: 600; color: #64748b; }
   </style>
 </head>
 <body>
@@ -557,7 +585,7 @@
         <button data-panel="run" onclick="showPanel('run')">Run</button>
         <button data-panel="trace" onclick="showPanel('trace')">Trace</button>
         <button data-panel="links" onclick="showPanel('links')">接口</button>
-      </nav>
+        <button data-panel="agents" onclick="showPanel('agents')">Agents</button>
       <div class="side-scroll">
         <section id="panel-knowledge" class="panel active">
           <h3>知识库管理</h3>
@@ -612,6 +640,24 @@
             <a href="/api/documents" target="_blank">Documents</a>
             <a href="/api/traces" target="_blank">Trace</a>
           </p>
+        </section>
+
+        <section id="panel-agents" class="panel">
+          <h3>Agent 任务</h3>
+          <label for="agentTask">任务描述</label>
+          <textarea id="agentTask" placeholder="例如：帮我规划今天 / 周复盘 / 帮我调研 Spring AI"></textarea>
+          <div class="row" style="margin-top:6px;">
+            <button class="primary" id="btnAgentRun" onclick="runAgentStream()">运行 Agent</button>
+            <button class="secondary" id="btnAgentStop" onclick="stopAgentStream()" disabled>停止</button>
+          </div>
+          <div id="agentLive" class="agent-live" style="display:none; margin-top:8px;">
+            <h4 style="margin:0 0 4px;">实时步骤</h4>
+            <div id="agentStepFeed"></div>
+          </div>
+          <div id="agentApproval" class="agent-approval" style="display:none;"></div>
+          <h4 style="margin:12px 0 4px;">历史运行</h4>
+          <button class="secondary" onclick="loadAgentRuns()">刷新列表</button>
+          <div id="agentRunList" style="margin-top:6px;"></div>
         </section>
       </div>
     </aside>
@@ -917,6 +963,7 @@
       if (name === 'trace') loadTraces();
       if (name === 'knowledge') loadDocs();
       if (name === 'run') loadRunTimeline();
+      if (name === 'agents') loadAgentRuns();
     }
 
     function renderBubble(el, text, isUser) {
@@ -1431,6 +1478,173 @@
       var item = e.target.closest('.session-item');
       if (item) switchSession(item.getAttribute('data-sid'));
     });
+    // ===== Agent Console =====
+    var agentAbortController = null;
+
+    function runAgentStream() {
+      var task = $('agentTask').value.trim();
+      if (!task) return alert('请输入任务描述');
+      var btn = $('btnAgentRun');
+      btn.disabled = true;
+      btn.textContent = '运行中...';
+      $('btnAgentStop').disabled = false;
+      $('agentLive').style.display = 'block';
+      $('agentStepFeed').innerHTML = '<div class="muted">开始执行...</div>';
+      $('agentApproval').style.display = 'none';
+      $('agentApproval').innerHTML = '';
+      agentAbortController = new AbortController();
+
+      fetch('/api/agents/run/stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken() },
+        body: JSON.stringify({ taskDescription: task, sessionId: currentSessionId || null }),
+        signal: agentAbortController.signal
+      }).then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function pump() {
+          reader.read().then(function(_a) { var done = _a.done, value = _a.value;
+            if (done) { resetAgentBtn(); loadAgentRuns(); return; }
+            buffer += decoder.decode(value, { stream: true });
+            var lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            for (var i = 0; i < lines.length; i++) {
+              var line = lines[i].trim();
+              if (!line.startsWith('data:')) continue;
+              var data = line.substring(5).trim();
+              try { handleAgentEvent(JSON.parse(data)); } catch(e) {}
+            }
+            pump();
+          }).catch(function() { resetAgentBtn(); });
+        }
+        pump();
+      }).catch(function(e) {
+        if (e.name !== 'AbortError') {
+          $('agentStepFeed').innerHTML += '<div class="muted" style="color:#ef4444;">Error: ' + e.message + '</div>';
+        }
+        resetAgentBtn();
+      });
+    }
+
+    function handleAgentEvent(data) {
+      // data might be wrapped in ApiResponse; handle both cases
+      var payload = data.data || data;
+      switch (data.event || payload._event) {
+        case 'step':
+        case 'step':
+          var feed = $('agentStepFeed');
+          var type = (payload.type || '').toLowerCase();
+          var icon = { thought: '💡', action: '⚙️', observation: '👁️', final: '✅', error: '❌' }[type] || '●';
+          var detail = '';
+          if (payload.toolName) detail = ' <span class="step-tool">Tool: ' + payload.toolName + '</span>';
+          var contentHtml = (payload.content || payload.toolResult || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          var div = document.createElement('div');
+          div.className = 'agent-step ' + type;
+          div.innerHTML = '<div class="step-type">' + icon + ' ' + payload.type + '</div>' +
+                          '<div class="step-content">' + (contentHtml.substring(0, 200) || '(tool result)') + '</div>' + detail;
+          feed.appendChild(div);
+          feed.scrollTop = feed.scrollHeight;
+          feed.parentElement.scrollTop = feed.parentElement.scrollHeight;
+          break;
+        case 'approval_required':
+          // approval_required event
+          var approvalData = payload.approval || payload;
+          showApprovalUI(approvalData.id, approvalData.toolName, approvalData.toolInput);
+          break;
+        case 'done':
+          // done event — run completed
+          var runPayload = payload.run || payload;
+          $('agentStepFeed').innerHTML += '<div class="muted" style="color:#10b981;">✅ Agent completed. Status: ' + (runPayload.status || 'COMPLETED') + '</div>';
+          resetAgentBtn();
+          loadAgentRuns();
+          break;
+        case 'error':
+          $('agentStepFeed').innerHTML += '<div class="muted" style="color:#ef4444;">Error: ' + (payload.message || 'Unknown') + '</div>';
+          resetAgentBtn();
+          break;
+      }
+    }
+
+    function showApprovalUI(id, toolName, toolInput) {
+      var div = $('agentApproval');
+      div.style.display = 'block';
+      div.innerHTML = '<h4>⚠️ 等待确认</h4>' +
+                      '<p><b>工具:</b> ' + toolName + '</p>' +
+                      '<p><b>参数:</b> <code>' + (toolInput || '').substring(0, 200) + '</code></p>' +
+                      '<div class="row">' +
+                      '<button class="primary" onclick="approveTool(' + id + ')" style="background:#10b981;">✅ 确认执行</button>' +
+                      '<button class="secondary" onclick="rejectTool(' + id + ')" style="background:#ef4444;color:#fff;">❌ 拒绝</button>' +
+                      '</div>';
+    }
+
+    function approveTool(id) {
+      api('/api/agents/approvals/' + id + '/approve', { method: 'POST' }).then(function(r) {
+        $('agentApproval').style.display = 'none';
+        $('agentStepFeed').innerHTML += '<div class="muted" style="color:#10b981;">✅ Approved #' + id + '</div>';
+      });
+    }
+
+    function rejectTool(id) {
+      api('/api/agents/approvals/' + id + '/reject', { method: 'POST' }).then(function(r) {
+        $('agentApproval').style.display = 'none';
+        $('agentStepFeed').innerHTML += '<div class="muted" style="color:#ef4444;">❌ Rejected #' + id + '</div>';
+      });
+    }
+
+    function stopAgentStream() {
+      if (agentAbortController) { agentAbortController.abort(); agentAbortController = null; }
+      resetAgentBtn();
+    }
+
+    function resetAgentBtn() {
+      $('btnAgentRun').disabled = false;
+      $('btnAgentRun').textContent = '运行 Agent';
+      $('btnAgentStop').disabled = true;
+    }
+
+    function loadAgentRuns() {
+      api('/api/agents/runs').then(function(r) {
+        var list = $('agentRunList');
+        var runs = r.data || [];
+        if (!runs.length) { list.innerHTML = '<div class="muted">暂无运行记录</div>'; return; }
+        list.innerHTML = runs.map(function(run) {
+          var skill = run.skillId ? '<span class="run-meta">Skill: ' + run.skillId + '</span>' : '';
+          return '<div class="agent-run-item" onclick="toggleRunSteps(this, \'' + run.id + '\')">' +
+                 '<div class="run-header">' +
+                   '<span class="run-task">' + run.taskDescription.substring(0, 40) + '</span>' +
+                   '<span class="run-status status-' + run.status + '">' + run.status + '</span>' +
+                 '</div>' +
+                 '<div class="run-meta">Steps: ' + run.stepCount + ' | ' + (run.createdAt || '').substring(0, 16) + ' ' + skill + '</div>' +
+                 '<div class="agent-steps-detail" id="steps-' + run.id + '"></div>' +
+                 '</div>';
+        }).join('');
+      });
+    }
+
+    function toggleRunSteps(el, runId) {
+      var detail = document.getElementById('steps-' + runId);
+      if (!detail) return;
+      if (detail.classList.contains('open')) {
+        detail.classList.remove('open');
+        detail.innerHTML = '';
+        return;
+      }
+      detail.classList.add('open');
+      detail.innerHTML = '<div class="muted">Loading...</div>';
+      api('/api/agents/runs/' + runId + '/steps').then(function(r) {
+        var steps = r.data || [];
+        detail.innerHTML = steps.map(function(s) {
+          var type = (s.type || '').toLowerCase();
+          var icon = { thought: '💡', action: '⚙️', observation: '👁️', final: '✅', error: '❌' }[type] || '●';
+          var content = s.content || s.toolResult || '';
+          var tool = s.toolName ? ' [Tool: ' + s.toolName + ']' : '';
+          return '<div class="step-detail"><span class="stype">' + icon + ' ' + s.type + '</span>' + tool + ': ' + content.substring(0, 150) + '</div>';
+        }).join('');
+      });
+    }
+
     $('question').addEventListener('keydown', function(event) {
       if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
         event.preventDefault();
